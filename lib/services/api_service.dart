@@ -1,4 +1,6 @@
 // --- lib/services/api_service.dart ---
+import 'dart:async';
+
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pry_conjunta_button_navigation/models/user.dart'; // Importa el modelo User
@@ -8,15 +10,27 @@ class ApiService {
 
   // Método estático para obtener la lista de usuarios
   static Future<List<User>> fetchUsers() async {
-    final response = await http.get(Uri.parse('$_baseUrl/users'));
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/users'),
+        headers: {
+          'User-Agent': 'YourApp/1.0.0',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
 
-    if (response.statusCode == 200) {
-      // Si la solicitud fue exitosa (código 200 OK), parsear el JSON
-      List jsonResponse = json.decode(response.body);
-      return jsonResponse.map((user) => User.fromJson(user)).toList();
-    } else {
-      // Si la solicitud no fue exitosa, lanzar una excepción
-      throw Exception('Fallo al cargar los usuarios de la API: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        List jsonResponse = json.decode(response.body);
+        return jsonResponse.map((user) => User.fromJson(user)).toList();
+      } else {
+        throw Exception('Error al cargar usuarios: ${response.statusCode}');
+      }
+    } on http.ClientException catch (e) {
+      throw Exception('Error de conexión: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Tiempo de espera agotado. Verifica tu conexión a internet.');
+    } catch (e) {
+      throw Exception('Error inesperado: $e');
     }
   }
 }
